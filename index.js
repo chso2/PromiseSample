@@ -7,36 +7,34 @@ class Promise{
         this.callbacks = [];
         this.result = null;
 
+        const resolve = (val) => {
+            if(this.state === PENDING){
+                this.state = FULFILLED;
+                this.result = val;
+    
+                setTimeout(() => {
+                    this.callbacks.forEach((cb) => {
+                        cb.resolvedCb(val);
+                    })
+                })
+            }
+        }
+        const reject = (err) => {
+            if(this.state === PENDING){
+                this.state = REJECTED;
+                this.result = err;
+    
+                setTimeout(() => {
+                    this.callbacks.forEach((cb) => {
+                        cb.rejectedCb(err);
+                    })
+                })
+            }
+        }
         try{
-            executor(this.onResolve.bind(this), this.onReject.bind(this));
+            executor(resolve, reject);
         }catch(err){
             reject(err);
-        }finally{
-
-        }
-    }
-    onResolve(val){
-        if(this.state === PENDING){
-            this.state = FULFILLED;
-            this.result = val;
-
-            setTimeout(() => {
-                this.callbacks.forEach((cb) => {
-                    cb.resolvedCb(val);
-                })
-            })
-        }
-    }
-    onReject(err){
-        if(this.state === PENDING){
-            this.state = REJECTED;
-            this.result = err;
-
-            setTimeout(() => {
-                this.callbacks.forEach((cb) => {
-                    cb.rejectedCb(err);
-                })
-            })
         }
     }
     then(resolvedCb, rejectedCb){
@@ -88,10 +86,15 @@ class Promise{
         return this.then(null, fn);
     }
 
-    // finally(fn){
-    //     this.finallyHandler = fn
-    //     return this
-    // }
+    finally(fn){
+        return this.then((val) => {
+            fn();
+            return val;
+        }).catch((err) => {
+            fn();
+            return err;
+        })
+    }
 
 
     static resolve(val){
@@ -106,6 +109,24 @@ class Promise{
     static reject(err){
         return new Promise((resolve, reject) => {
             reject(err);
+        })
+    }
+    static all(promises){
+        return new Promise((resolve, reject) => {
+            let arr = [];
+            promises.forEach((current, index) => {
+                // promise 아닐 때 포함안됨
+                if(current instanceof Promise){
+                    current.then((val) => {
+                        arr.push(val);
+                        if(index === promises.length - 1){
+                            resolve(arr);
+                        }
+                    }, (err) => {
+                        reject(err);
+                    })
+                }
+            })
         })
     }
 }
