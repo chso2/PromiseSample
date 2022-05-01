@@ -1,132 +1,47 @@
-const PENDING = 'PENDING',
-     REJECTED = 'REJECTED',
-    FULFILLED = 'FULFILLED';
-class Promise{
-    constructor(executor){
-        this.state = PENDING;
-        this.callbacks = [];
-        this.result = null;
+import Promise from "./promise";
 
-        const resolve = (val) => {
-            if(this.state === PENDING){
-                this.state = FULFILLED;
-                this.result = val;
-    
-                setTimeout(() => {
-                    this.callbacks.forEach((cb) => {
-                        cb.resolvedCb(val);
-                    })
-                })
+// promise chain test
+const chainTest = () => {
+    new Promise((resolve, reject) => {
+        setTimeout(() => {
+            try {
+                resolve("promise received result");
+            } catch (error) {
+                reject(error);
             }
-        }
-        const reject = (err) => {
-            if(this.state === PENDING){
-                this.state = REJECTED;
-                this.result = err;
-    
-                setTimeout(() => {
-                    this.callbacks.forEach((cb) => {
-                        cb.rejectedCb(err);
-                    })
-                })
-            }
-        }
-        try{
-            executor(resolve, reject);
-        }catch(err){
-            reject(err);
-        }
-    }
-    then(resolvedCb, rejectedCb){
-        const that = this
-        resolvedCb = typeof resolvedCb === 'function' ? resolvedCb : (val) => val;
-        rejectedCb = typeof rejectedCb === 'function' ? rejectedCb : (err) => { throw err }
-
-        return new Promise((resolve, reject) => {
-            function callback(type){
-                try{
-                    let promiseResult = type(that.result);
-                    if(promiseResult instanceof Promise){
-                        promiseResult.then((v) => {
-                            resolve(v);
-                        }, (e) => {
-                            reject(e);
-                        });
-                    }else{
-                        resolve(promiseResult);
-                    }
-                }catch(err){
-                    reject(err);
-                }
-            }
-            if(this.state === FULFILLED){
-                setTimeout(() => {
-                    callback(resolvedCb);
-                });
-            }
-            if(this.state === REJECTED){
-                setTimeout(() => {
-                    callback(rejectedCb);
-                });
-            }
-            if(this.state === PENDING){
-                this.callbacks.push({
-                    resolvedCb : () => {
-                        callback(resolvedCb)
-                    },
-                    rejectedCb : () => {
-                        callback(rejectedCb);
-                    },
-                })
-            }
-        })
-    }
-    // rejectedCb
-    catch(fn){
-        return this.then(null, fn);
-    }
-
-    finally(fn){
-        return this.then((val) => {
-            fn();
-            return val;
-        }).catch((err) => {
-            fn();
-            return err;
-        })
-    }
-
-
-    static resolve(val){
-        return new Promise((resolve, reject) => {
-            if(val instanceof Promise){
-                val.then((v) => resolve(v), (e) => reject(e));
-            }else{
-                resolve(val);
-            }
-        });
-    }
-    static reject(err){
-        return new Promise((resolve, reject) => {
-            reject(err);
-        })
-    }
-    static all(promises){
-        return new Promise((resolve, reject) => {
-            let arr = [];
-            promises.forEach((current, index) => {
-                // promise 아닐 때 포함안됨
-                if(current instanceof Promise){
-                    current.then((val) => {
-                        arr.push(val);
-                        if(index === promises.length - 1){
-                            resolve(arr);
-                        }
-                    }, (err) => {
-                        reject(err);
-                    })
-                }
-            })
-        })
-    }
+        }, 3000);
+    }).then((result1) => {
+        console.log(result1);
+    }).then(() => {
+        allTest();
+    })
 }
+
+// promise all test
+const allTest = () => {
+    const promise1 = Promise.resolve(3);
+    const promise2 = new Promise((resolve, reject) => {
+      setTimeout(resolve, 3000, 'foo');
+    });
+    
+    Promise.all([promise1, promise2]).then((values) => {
+      console.log(values);
+    });
+}
+
+new Promise((resolve, reject) => {
+    console.log('Initial');
+    resolve();
+})
+.then(() => {
+    throw new Error('Something failed');
+    // rejection 발생으로 아래 실행 안됨
+    console.log('Do this');
+})
+.catch(() => {
+    console.log('Do that');
+})
+.then(() => {
+    console.log('Do this, whatever happened before');
+    chainTest();
+})
